@@ -12,7 +12,6 @@ nv.models.timelines = function() {
     , id           = Math.floor(Math.random() * 100000) //Create semi-unique ID incase user doesn't select one
     , x            = d3.scale.linear()
     , y            = d3.scale.linear()
-    , z            = d3.scale.linear() //linear because d3.svg.shape.size is treated as area
     , getX         = function(d) { return d.x } // accessor to get the x value
     , getY         = function(d) { return d.y } // accessor to get the y value
     , getSize      = function(d) { return d.size || 1} // accessor to get the point size
@@ -29,8 +28,7 @@ nv.models.timelines = function() {
     , yDomain      = null // Override y domain
     , xRange       = null // Override x range
     , yRange       = null // Override y range
-    , sizeDomain   = null // Override point size domain
-    , sizeRange    = null
+    , minBarWidth  = 8 // min bar width for easier clicking
     , singlePoint  = false
     , dispatch     = d3.dispatch('elementClick', 'elementMouseover', 'elementMouseout')
     ;
@@ -42,7 +40,7 @@ nv.models.timelines = function() {
   // Private Variables
   //------------------------------------------------------------
 
-  var x0, y0, z0 // used to store previous scales
+  var x0, y0 // used to store previous scales
     , timeoutID
     , needsUpdate = false // Flag for when the points are visually updating, but the interactive layer is behind, to disable tooltips
     ;
@@ -67,7 +65,7 @@ nv.models.timelines = function() {
       // Setup Scales
 
       // remap and flatten the data for use in calculating the scales' domains
-      var seriesData = (xDomain && yDomain && sizeDomain) ? [] : // if we know xDomain and yDomain and sizeDomain, no need to calculate.... if Size is constant remember to set sizeDomain to speed up performance
+      var seriesData = (xDomain && yDomain) ? [] : // if we know xDomain and yDomain, no need to calculate....
             d3.merge(
               data.map(function(d) {
                 return d.values.map(function(d,i) {
@@ -76,7 +74,14 @@ nv.models.timelines = function() {
               })
             );
 
-      x   .domain(xDomain || d3.extent(seriesData.map(function(d) { return d.x; }).concat(forceX)))
+      var xMin = -1;
+      var xMax = 1;
+      if (!xDomain) {
+          xMin = d3.min(seriesData.map(function (d) { return d.x; }));
+          xMax = d3.max(seriesData.map(function (d) { return d.x + d.size }));
+      }
+
+      x.domain(xDomain || [xMin, xMax].concat(forceX))
 
       if (padData && data[0])
         x.range(xRange || [(availableWidth * padDataOuter +  availableWidth) / (2 *data[0].values.length), availableWidth - availableWidth * (1 + padDataOuter) / (2 * data[0].values.length)  ]);
@@ -86,9 +91,6 @@ nv.models.timelines = function() {
 
       y   .domain(yDomain || d3.extent(seriesData.map(function(d) { return d.y }).concat(forceY)))
           .range(yRange || [availableHeight, 0]);
-
-      z   .domain(sizeDomain || d3.extent(seriesData.map(function(d) { return d.size }).concat(forceSize)))
-          .range(sizeRange || [16, 256]);
 
       // If scale's domain don't have a range, slightly adjust to make one... so a chart can show a single data point
       if (x.domain()[0] === x.domain()[1] || y.domain()[0] === y.domain()[1]) singlePoint = true;
@@ -113,7 +115,6 @@ nv.models.timelines = function() {
 
       x0 = x0 || x;
       y0 = y0 || y;
-      z0 = z0 || z;
 
       //------------------------------------------------------------
 
@@ -153,48 +154,44 @@ nv.models.timelines = function() {
         // add event handlers to points instead voronoi paths
         wrap.select('.nv-groups').selectAll('.nv-group')
         .selectAll('.nv-point')
-            //.data(dataWithPoints)
-            //.style('pointer-events', 'auto') // recativate events, disabled by css
             .on('click', function(d,i) {
-            //nv.log('test', d, i);
-            if (needsUpdate || !data[d.series]) return 0; //check if this is a dummy point
-            var series = data[d.series],
-                point  = series.values[i];
+                if (needsUpdate || !data[d.series]) return 0; //check if this is a dummy point
+                var series = data[d.series],
+                    point  = series.values[i];
 
-            dispatch.elementClick({
-                point: point,
-                series: series,
-                pos: [x(getX(point, i)) + margin.left, y(getY(point, i)) + margin.top],
-                seriesIndex: d.series,
-                pointIndex: i
-            });
+                dispatch.elementClick({
+                    point: point,
+                    series: series,
+                    pos: [x(getX(point, i)) + margin.left, y(getY(point, i)) + margin.top],
+                    seriesIndex: d.series,
+                    pointIndex: i
+                });
             })
             .on('mouseover', function(d,i) {
-            if (needsUpdate || !data[d.series]) return 0; //check if this is a dummy point
-            var series = data[d.series],
-                point  = series.values[i];
+                if (needsUpdate || !data[d.series]) return 0; //check if this is a dummy point
+                var series = data[d.series],
+                    point  = series.values[i];
 
-            dispatch.elementMouseover({
-                point: point,
-                series: series,
-                pos: [x(getX(point, i)) + margin.left, y(getY(point, i)) + margin.top],
-                seriesIndex: d.series,
-                pointIndex: i
-            });
+                dispatch.elementMouseover({
+                    point: point,
+                    series: series,
+                    pos: [x(getX(point, i)) + margin.left, y(getY(point, i)) + margin.top],
+                    seriesIndex: d.series,
+                    pointIndex: i
+                });
             })
             .on('mouseout', function(d,i) {
-            if (needsUpdate || !data[d.series]) return 0; //check if this is a dummy point
-            var series = data[d.series],
-                point  = series.values[i];
+                if (needsUpdate || !data[d.series]) return 0; //check if this is a dummy point
+                var series = data[d.series],
+                    point  = series.values[i];
 
-            dispatch.elementMouseout({
-                point: point,
-                series: series,
-                seriesIndex: d.series,
-                pointIndex: i
+                dispatch.elementMouseout({
+                    point: point,
+                    series: series,
+                    seriesIndex: d.series,
+                    pointIndex: i
+                });
             });
-            });
-          
 
           needsUpdate = false;
       }
@@ -219,19 +216,17 @@ nv.models.timelines = function() {
           .style('fill-opacity', .5);
 
 
-    var points = groups.selectAll('circle.nv-point')
+    var points = groups.selectAll('line.nv-point')
         .data(function(d) { return d.values }, pointKey);
-    points.enter().append('circle')
+    points.enter().append('line')
         .style('fill', function (d,i) { return d.color })
         .style('stroke', function (d,i) { return d.color })
-        .attr('cx', function(d,i) { return nv.utils.NaNtoZero(x0(getX(d,i))) })
-        .attr('cy', function(d,i) { return nv.utils.NaNtoZero(y0(getY(d,i))) })
-        .attr('r', function(d,i) { return Math.sqrt(z(getSize(d,i))/Math.PI) });
+        .attr('x1', function (d, i) { return nv.utils.NaNtoZero(x0(getX(d, i))) })
+        .attr('y1', function (d, i) { return nv.utils.NaNtoZero(y0(getY(d, i))) })
+        .attr('x2', function (d, i) { return nv.utils.NaNtoZero(x0(getX(d, i))) })
+        .attr('y2', function (d, i) { return nv.utils.NaNtoZero(y0(getY(d, i))) });
     points.exit().remove();
-    groups.exit().selectAll('path.nv-point').transition()
-        .attr('cx', function(d,i) { return nv.utils.NaNtoZero(x(getX(d,i))) })
-        .attr('cy', function(d,i) { return nv.utils.NaNtoZero(y(getY(d,i))) })
-        .remove();
+    groups.exit().selectAll('path.nv-point').remove();
     points.each(function(d,i) {
         d3.select(this)
         .classed('nv-point', true)
@@ -239,13 +234,16 @@ nv.models.timelines = function() {
         .classed('hover',false)
         ;
     });
+
     points.transition()
-        .attr('cx', function(d,i) { return nv.utils.NaNtoZero(x(getX(d,i))) })
-        .attr('cy', function(d,i) { return nv.utils.NaNtoZero(y(getY(d,i))) })
-        .attr('r', function(d,i) { return Math.sqrt(z(getSize(d,i))/Math.PI) });
-
-    
-
+    .attr('x1', function (d, i) { return nv.utils.NaNtoZero(x(getX(d, i))) })
+    .attr('y1', function (d, i) { return nv.utils.NaNtoZero(y(getY(d, i))) })
+    .attr('x2', function (d, i) {
+        var x2 = nv.utils.NaNtoZero(x(getX(d, i) + getSize(d, i)));
+        var x1 = nv.utils.NaNtoZero(x(getX(d, i)));
+        return minBarWidth < (x2 - x1) ? x2 : x1 + minBarWidth;
+    })
+    .attr('y2', function (d, i) { return nv.utils.NaNtoZero(y(getY(d, i))) });
 
       // Delay updating the invisible interactive layer for smoother animation
       clearTimeout(timeoutID); // stop repeat calls to updateInteractiveLayer
@@ -255,8 +253,6 @@ nv.models.timelines = function() {
       //store old scales for use in transitions on update
       x0 = x.copy();
       y0 = y.copy();
-      z0 = z.copy();
-
     });
 
     return chart;
@@ -275,7 +271,6 @@ nv.models.timelines = function() {
       d3.select(".nv-chart-" + id + " .nv-series-" + seriesIndex + " .nv-point-" + pointIndex)
           .classed("hover",isHoverOver);
   };
-
 
   dispatch.on('elementMouseover.point', function(d) {
      if (interactive) chart.highlightPoint(d.seriesIndex,d.pointIndex,true);
@@ -346,12 +341,6 @@ nv.models.timelines = function() {
     return chart;
   };
 
-  chart.zScale = function(_) {
-    if (!arguments.length) return z;
-    z = _;
-    return chart;
-  };
-
   chart.xDomain = function(_) {
     if (!arguments.length) return xDomain;
     xDomain = _;
@@ -364,12 +353,6 @@ nv.models.timelines = function() {
     return chart;
   };
 
-  chart.sizeDomain = function(_) {
-    if (!arguments.length) return sizeDomain;
-    sizeDomain = _;
-    return chart;
-  };
-
   chart.xRange = function(_) {
     if (!arguments.length) return xRange;
     xRange = _;
@@ -379,12 +362,6 @@ nv.models.timelines = function() {
   chart.yRange = function(_) {
     if (!arguments.length) return yRange;
     yRange = _;
-    return chart;
-  };
-
-  chart.sizeRange = function(_) {
-    if (!arguments.length) return sizeRange;
-    sizeRange = _;
     return chart;
   };
 
@@ -458,6 +435,12 @@ nv.models.timelines = function() {
     if (!arguments.length) return singlePoint;
     singlePoint = _;
     return chart;
+  };
+
+  chart.minBarWidth = function (_) {
+      if (!arguments.length) return minBarWidth;
+      minBarWidth = _;
+      return chart;
   };
 
   //============================================================

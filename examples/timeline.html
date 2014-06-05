@@ -20,7 +20,8 @@ body {
 <script src="../src/models/timelines.js"></script>
 <script>
 
-
+    var data = randomData();
+    var chart;
 //Format A
 nv.addGraph({
   generate: function() {
@@ -37,7 +38,7 @@ nv.addGraph({
     d3.select('#test1')
       .attr('width', width)
       .attr('height', height)
-      .datum(randomData())
+      .datum(data)
     .transition().duration(500)
       .call(chart);
 
@@ -67,10 +68,22 @@ nv.addGraph({
         .call(graph);
 
     };
+
+    setInterval(function () {
+        xx += 100;
+        for (j = 0; j < 20; j++) {
+            data[0].values.push({ x: xx + Math.random() * 1000, y: Math.random() * 1000, z: Math.random() * 100 });
+        }
+        d3.select('#test1')
+          .datum(data)
+          .call(graph);
+
+    }, 1000);
+
   }
 });
 
-
+var xx = 0;
 
 
 function randomData() {
@@ -82,13 +95,15 @@ function randomData() {
       values: []
     });
 
-    for (j = 0; j < 100; j++) {
-      data[i].values.push({x: Math.random(), y: Math.random(), z: Math.random()});
+    for (j = 0; j < 20; j++) {
+      data[i].values.push({x: Math.random() * 1000, y: Math.random() * 1000, z: Math.random() *100});
     }
   }
 
   return data;
 }
+
+
 
 
 </script>
