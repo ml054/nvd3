@@ -105,7 +105,7 @@ div {
         });
 
         d3.select('#test1 svg')
-            .datum(timeData)
+            .datum(chartData)
             .call(chart);
 
         nv.utils.windowResize(chart.update);
@@ -141,7 +141,7 @@ div {
         });
 
         d3.select('#brush svg')
-           .datum(timeData)
+           .datum(chartData)
            .call(brush);
 
         var svg = d3.select("#brush svg");
@@ -191,7 +191,67 @@ div {
         return brush;
     });
 
+    var newData = false;
+
+    setTimeout(function () {
+        newData = true;
+    }, 3000);
+
+    function chartData() {
+        if (newData) {
+            return timeData2();
+        } else {
+            return timeData();
+        }
+    }
+
+    setTimeout(function () {
+
+        d3.select('#brush svg')
+                   .datum(chartData)
+                   .call(brush);
+        d3.select('#test1 svg')
+            .datum(chartData)
+            .call(chart);
+
+    }, 4000);
+    
+
     function timeData() {
+        return [
+     {
+         key: "Reduce",
+         values: [
+             {
+                 start: 1401861811851,
+                 duration: 2000,
+                 docs: 1000,
+                 y: 0.5
+             },
+             {
+                 start: 1401861815851,
+                 duration: 3000,
+                 docs: 1000,
+                 y: 0.33333
+             }
+            
+         ]
+     },
+      {
+          key: "Map",
+          values: [
+              {
+                  start: 1401861811851,
+                  duration: 500,
+                  docs: 1000,
+                  y: 0.7
+              }
+          ]
+      },
+        ]
+    }
+
+    function timeData2() {
         return [
      {
          key: "Reduce",
