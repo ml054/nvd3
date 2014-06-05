@@ -33,12 +33,21 @@ div {
 }
 
 #test1 svg {
-  height: 500px;
+  height: 400px;
 }
 
 .nv-point {
     stroke-linecap: round;
     stroke-width: 5px;
+}
+#brush svg {
+    height: 100px;
+}
+.brush .extent {
+  stroke: #F7EA59;
+  fill: #F7EA59;
+  fill-opacity: .125;
+  shape-rendering: crispEdges;
 }
 
 </style>
@@ -49,18 +58,13 @@ div {
   <div id="test1" class='with-3d-shadow with-transitions'>
     <svg></svg>
   </div>
+    <div id="brush" class='with-3d-shadow with-transitions'>
+        <svg></svg>
+    </div>
 </div>
 
 <script src="../lib/d3.v3.js"></script>
 <script src="../nv.d3.js"></script>
-<!--<script src="../src/tooltip.js"></script>
-<script src="../src/utils.js"></script>
-<script src="../src/models/legend.js"></script>
-<script src="../src/models/axis.js"></script>
-<script src="../src/models/distribution.js"></script>
-<script src="../src/models/scatter.js"></script>
-<script src="../src/models/scatterChart.js"></script>-->
-
 <script src="../src/models/timeChart.js"></script>
 <script src="../src/models/timeline.js"></script>
 <script>
@@ -69,6 +73,9 @@ div {
 
     //Format A
     var chart;
+    var brush;
+    var b;
+
     nv.addGraph(function () {
         chart = nv.models.timeChart()
                       .showDistX(false)
@@ -76,16 +83,19 @@ div {
                       .x(function (d) { return d.start })
                       .color(d3.scale.category10().range())
                       .transitionDuration(300)
+                      .forceY([0])
+                      .useVoronoi(false)
+                      .yPadding(0.02)
+                      .clipEdge(true)
+                      .interactive(true)
+                      .tooltipXContent(null)
         ;
-        chart.forceY([0]);
-        chart.useVoronoi(false);
         chart.xAxis.tickFormat(function (_) { return d3.time.format("%H:%M:%S")(new Date(_)); });
-        chart.interactive(true);
         chart.xAxis.showMaxMin(false);
+        chart.yAxis.showMaxMin(false);
         chart.size(function (d) {
             return d.duration;
         });
-        chart.tooltipXContent(null);
         chart.xAxis.axisLabel("time");
         chart.yAxis.axisLabel("docs/s");
         
@@ -93,7 +103,7 @@ div {
             console.log(e.point);
             return '<h3>' + key + '</h3>' + '<div>Start: ' + new Date(e.point.start) + '</div><div>Doc count: ' + e.point.docs + '</div>';
         });
-        
+
         d3.select('#test1 svg')
             .datum(timeData)
             .call(chart);
@@ -102,9 +112,83 @@ div {
 
         chart.dispatch.on('stateChange', function (e) { ('New State:', JSON.stringify(e)); });
 
+        return chart;
+    });
+
+    nv.addGraph(function () {
+        brush = nv.models.timeChart()
+                      .showDistX(false)
+                      .showDistY(false)
+                      .x(function (d) { return d.start })
+                      .color(d3.scale.category10().range())
+                      .transitionDuration(300)
+                      .forceY([0])
+                      .useVoronoi(false)
+            .showControls(false)
+            .showLegend(false)
+            .interactive(false)
+            .showYAxis(false)
+            .tooltipXContent(null)
+        ;
+        brush.xAxis.tickFormat(function (_) { return d3.time.format("%H:%M:%S")(new Date(_)); });
+        brush.xAxis.showMaxMin(false);
+        brush.yAxis.showMaxMin(false);
+        brush.size(function (d) {
+            return d.duration;
+        });
+        brush.y(function (d) {
+            return d.series + 1;
+        });
+
+        d3.select('#brush svg')
+           .datum(timeData)
+           .call(brush);
+
+        var svg = d3.select("#brush svg");
+        var context = svg.append("g")
+            .attr("class", "context")
+            .attr("transform", "translate(" + brush.margin().left + "," + brush.margin().top + ")");
+
+        var width = parseInt(svg.style('width')) - brush.margin().left - brush.margin().right;
+        
+        var x2 = d3.time.scale().range([0, width]);
+
+        b = d3.svg.brush()
+            .x(x2)
+            .on("brush", brushed);
+
+        x2.domain(chart.xAxis.domain());
+
+        context.append("g")
+              .attr("class", "x brush")
+              .call(b)
+            .selectAll("rect")
+              .attr("x", -5)
+              .attr("y", -20)
+              .attr("height", 45);
+
+        function brushed() {
+            chart.xDomain(b.empty() ? x2.domain() : b.extent());
+            chart.update();
+        }
+
+        nv.utils.windowResize(function () {
+            brush.update();
+            var svg = d3.select("#brush svg");
+            var width = parseInt(svg.style('width')) - brush.margin().left - brush.margin().right;
+            x2.range([0, width]);
+            d3.select('#brush svg .x.brush')
+              .call(b.clear())
+              .call(b.event);
+        });
         
 
-        return chart;
+        chart.dispatch.on('stateChange', function (e) {
+            d3.select('#brush svg .x.brush').call(b.clear()).call(b.event);
+            chart.xDomain(null);
+        });
+
+        return brush;
     });
 
     function timeData() {
@@ -162,7 +246,6 @@ div {
               }
           ]
       },
-
         ]
     }
 

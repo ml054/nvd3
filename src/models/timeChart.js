@@ -246,8 +246,8 @@ nv.models.timeChart = function() {
 
       //Adjust for x and y padding
       if (xPadding !== 0) {
-        var xRange = x.domain()[1] - x.domain()[0];
-        scatter.xDomain([x.domain()[0] - (xPadding * xRange), x.domain()[1] + (xPadding * xRange)]);
+        var xRange = x.domain()[1].getTime() - x.domain()[0].getTime();
+        scatter.xDomain([x.domain()[0].getTime() - (xPadding * xRange), x.domain()[1].getTime() + (xPadding * xRange)]);
       }
 
       if (yPadding !== 0) {
@@ -478,7 +478,7 @@ nv.models.timeChart = function() {
   chart.distX = distX;
   chart.distY = distY;
 
-  d3.rebind(chart, scatter, 'id', 'interactive', 'pointActive', 'x', 'y', 'shape', 'size', 'xScale', 'yScale', 'zScale', 'xDomain', 'yDomain', 'xRange', 'yRange', 'sizeDomain', 'sizeRange', 'forceX', 'forceY', 'forceSize', 'clipVoronoi', 'clipRadius', 'useVoronoi');
+  d3.rebind(chart, scatter, 'id', 'interactive', 'pointActive', 'x', 'y', 'shape', 'size', 'xScale', 'yScale', 'zScale', 'xDomain', 'yDomain', 'xRange', 'yRange', 'sizeDomain', 'sizeRange', 'forceX', 'forceY', 'forceSize', 'clipEdge', 'clipVoronoi', 'clipRadius', 'useVoronoi');
   chart.options = nv.utils.optionsFunc.bind(chart);
   
   chart.margin = function(_) {

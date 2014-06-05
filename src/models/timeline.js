@@ -88,28 +88,18 @@ nv.models.timeline = function() {
           xMax = d3.max(seriesData.map(function (d) { return d.x + d.size }));
       }
 
-      var yMin = -1;
-      var yMax = 1;
-      if (!yDomain) {
-
-      }
-
-      var xPaddingPercentage = 0.02;
-
-      x.domain(xDomain ||  
-          [xMin - (xMax - xMin) * xPaddingPercentage / 2, xMax + (xMax - xMin) * xPaddingPercentage / 2]
-          .concat(forceX));
+      x.domain(xDomain || [xMin, xMax].concat(forceX))
 
       if (padData && data[0])
-        x.range(xRange || [(availableWidth * padDataOuter +  availableWidth) / (2 *data[0].values.length), availableWidth - availableWidth * (1 + padDataOuter) / (2 * data[0].values.length)  ]);
-        //x.range([availableWidth * .5 / data[0].values.length, availableWidth * (data[0].values.length - .5)  / data[0].values.length ]);
+          x.range(xRange || [(availableWidth * padDataOuter + availableWidth) / (2 * data[0].values.length), availableWidth - availableWidth * (1 + padDataOuter) / (2 * data[0].values.length)]);
+          //x.range([availableWidth * .5 / data[0].values.length, availableWidth * (data[0].values.length - .5)  / data[0].values.length ]);
       else
-        x.range(xRange || [0, availableWidth]);
+          x.range(xRange || [0, availableWidth]);
 
-      y   .domain(yDomain || d3.extent(seriesData.map(function(d) { return d.y }).concat(forceY)))
+      y.domain(yDomain || d3.extent(seriesData.map(function (d) { return d.y }).concat(forceY)))
           .range(yRange || [availableHeight, 0]);
 
-      z   .domain(sizeDomain || d3.extent(seriesData.map(function(d) { return d.size }).concat(forceSize)))
+      z.domain(sizeDomain || d3.extent(seriesData.map(function (d) { return d.size }).concat(forceSize)))
           .range(sizeRange || [16, 256]);
 
       // If scale's domain don't have a range, slightly adjust to make one... so a chart can show a single data point
