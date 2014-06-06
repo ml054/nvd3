@@ -64,35 +64,67 @@ div {
 <script src="../src/models/timelinesChart.js"></script>
 <script>
 
-//Format A
+    //Format A
+    var autoUpdate = false;
 var chart;
 nv.addGraph(function() {
     chart = nv.models.timelinesChart()
                   .showDistX(true)
                   .showDistY(true)
+				  .showControls(true)
                   .color(d3.scale.category10().range())
-                  .transitionDuration(300)
+                  .transitionDuration(250)
                 ;
 
+				chart.yAxis.showMaxMin(false);
+				chart.y2Axis.showMaxMin(false);
+				chart.xAxis.showMaxMin(false);
+				chart.x2Axis.showMaxMin(false);
     chart.xAxis.tickFormat(function (_) { return d3.time.format("%H:%M:%S")(new Date(_)); });
 	chart.x2Axis.tickFormat(function (_) { return d3.time.format("%H:%M:%S")(new Date(_)); });
   chart.tooltipContent(function(key) {
       return '<h2>' + key + '</h2>';
   });
 
+
+  var data = randomData(4, 40, 0);
+
   d3.select('#test1 svg')
-      .datum(randomData(4,40))
+      .datum(data)
       .call(chart);
 
   nv.utils.windowResize(chart.update);
 
-  chart.dispatch.on('stateChange', function(e) { ('New State:', JSON.stringify(e)); });
+  var y = 0;
+  setInterval(function () {
+      
+      if (autoUpdate) {
+
+          y++;
+          random = d3.random.normal();
+
+          data[0].values.push({
+              x: 1401861815851 + 3600 * 1000 + 1000 * 3600 * random() + y * 500000,
+              y: random(),
+              size: Math.random() * 15 * 60 * 1000,
+              shape: 'circle'
+          });
+
+
+          d3.select('#test1 svg')
+          .datum(data);
+          chart.update();
+      }
+  },1000);
+  
+  chart.dispatch.on('stateChange', function (e) { console.log('New State:', JSON.stringify(e)); });
+  chart.dispatch.on('controlsChange', function (e) { autoUpdate = e.disabled });
 
   return chart;
 });
 
 
-function randomData(groups, points) { //# groups,# points per group
+function randomData(groups, points, offset) { //# groups,# points per group
   var data = [],
       shapes = ['circle', 'cross', 'triangle-up', 'triangle-down', 'diamond', 'square'],
       random = d3.random.normal();
@@ -105,7 +137,7 @@ function randomData(groups, points) { //# groups,# points per group
 
     for (j = 0; j < points; j++) {
       data[i].values.push({
-          x: 1401861815851 + 1000 * 3600 * random(), 
+          x: 1401861815851 + 1000 * 3600 * random() + offset, 
         y: random(), 
         size: Math.random() * 15*60 * 1000, 
         shape: shapes[j % 6]

@@ -43,7 +43,7 @@ nv.models.timelinesChart = function() {
     , tooltip      = null
     , state = {}
     , defaultState = null
-    , dispatch     = d3.dispatch('tooltipShow', 'tooltipHide', 'stateChange', 'changeState', 'brush')
+    , dispatch     = d3.dispatch('tooltipShow', 'tooltipHide', 'stateChange', 'changeState', 'brush', 'controlsChange')
     , noData       = "No Data Available."
     , transitionDuration = 250
     ;
@@ -114,7 +114,7 @@ nv.models.timelinesChart = function() {
   };
 
   var controlsData = [
-    { key: 'Magnify', disabled: true }
+    { key: 'Auto-update', disabled: true }
   ];
 
   //============================================================
@@ -332,7 +332,6 @@ nv.models.timelinesChart = function() {
             .attr('height', availableHeight2);
         gBrush.selectAll('.resize').append('path').attr('d', resizePath);
 
-        onBrush();
 
         //------------------------------------------------------------
 
@@ -386,22 +385,26 @@ nv.models.timelinesChart = function() {
       onBrush();
 
       x2Axis
-         .scale(x2)
-         .ticks(x2Axis.ticks() && x2Axis.ticks().length ? x2Axis.ticks() : availableWidth / 100)
-         .tickSize(-availableHeight1, 0);
+          .scale(x2)
+          .ticks(availableWidth / 100)
+          .tickSize(-availableHeight2, 0);
 
       g.select('.nv-context .nv-x.nv-axis')
-        .attr('transform', 'translate(0,' + y2.range()[0] + ')')
-        .call(x2Axis);
+          .attr('transform', 'translate(0,' + y2.range()[0] + ')');
+      d3.transition(g.select('.nv-context .nv-x.nv-axis'))
+          .call(x2Axis);
 
 
       y2Axis
-          .scale(y2)
-          .ticks(y2Axis.ticks() && y2Axis.ticks().length ? y2Axis.ticks() : availableHeight1 / 36)
-          .tickSize(-availableWidth, 0);
+        .scale(y2)
+        .ticks(availableHeight2 / 36)
+        .tickSize(-availableWidth, 0);
 
-      g.select('.nv-context .nv-y.nv-axis')
+      d3.transition(g.select('.nv-context .nv-y.nv-axis'))
           .call(y2Axis);
+
+      g.select('.nv-context .nv-x.nv-axis')
+          .attr('transform', 'translate(0,' + y2.range()[0] + ')');
 
 
       if (showDistX) {
@@ -442,23 +445,17 @@ nv.models.timelinesChart = function() {
       // Event Handling/Dispatching (in chart's scope)
       //------------------------------------------------------------
 
-      controls.dispatch.on('legendClick', function(d,i) {
+      controls.dispatch.on('legendClick', function (d, i) {
+        dispatch.controlsChange(d, i);
         d.disabled = !d.disabled;
 
-        g.select('.nv-background') .style('pointer-events', d.disabled ? 'none' : 'all');
-        g.select('.nv-point-paths').style('pointer-events', d.disabled ? 'all' : 'none' );
-
         if (d.disabled) {
-          x.distortion(0).focus(0);
-          y.distortion(0).focus(0);
-
-          g.select('.nv-scatterWrap').call(timelines);
-          g.select('.nv-x.nv-axis').call(xAxis);
-          g.select('.nv-y.nv-axis').call(yAxis);
+            g.select('.nv-context').transition().duration(transitionDuration).style('opacity', 1);
         } else {
-          pauseFisheye = false;
+            g.select('.nv-context').transition().duration(transitionDuration).style('opacity', 0);
+            brushExtent = null;
+            brush.clear();
         }
-
         chart.update();
       });
 
@@ -548,32 +545,23 @@ nv.models.timelinesChart = function() {
 
           dispatch.brush({ extent: extent, brush: brush });
 
-
           updateBrushBG();
-
           
           // Update Main (Focus)
-          var focusTimelineWrap = g.select('.nv-focus .nv-scatterWrap')
-              .datum(
-                data
-                  .filter(function (d) { return !d.disabled })
-                  .map(function (d, i) {
-                      return {
-                          key: d.key,
-                          values: d.values.filter(function (d, i) {
-                              return timelines.x()(d, i) >= extent[0] && timelines.x()(d, i) <= extent[1];
-                          })
-                      }
-                  })
-              );
-          focusTimelineWrap.transition().duration(transitionDuration).call(timelines);
-          
+          timelines.xDomain(extent);
+          g.select('.nv-focus .nv-scatterWrap').datum(data.filter(function (d) { return !d.disabled })).transition().duration(transitionDuration).call(timelines);
 
           // Update Main (Focus) Axes
-          g.select('.nv-focus .nv-x.nv-axis').transition().duration(transitionDuration)
+          g.select('.nv-focus .nv-x.nv-axis').datum(data.filter(function (d) { return !d.disabled })).transition().duration(transitionDuration)
               .call(xAxis);
-          g.select('.nv-focus .nv-y.nv-axis').transition().duration(transitionDuration)
+          g.select('.nv-focus .nv-y.nv-axis').datum(data.filter(function (d) { return !d.disabled })).transition().duration(transitionDuration)
               .call(yAxis);
+          
+          g.select('.nv-focus .nv-distributionX').datum(data.filter(function (d) { return !d.disabled })).transition().duration(transitionDuration)
+                      .call(distX);
+
+          g.select('.nv-focus .nv-distributionY').datum(data.filter(function (d) { return !d.disabled })).transition().duration(transitionDuration)
+                      .call(distY);
       }
     });
 
